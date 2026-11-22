@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BeeInControl — OT Fleet &amp; NIS2 Simulator</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b1220'/%3E%3Cpath d='M16 4l10 6v12l-10 6L6 22V10z' fill='none' stroke='%23f59e0b' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2322d3ee'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- ======================= LOGIN VIEW ======================= -->
+  <div id="login-view" class="login-view hidden">
+    <div class="login-backdrop" aria-hidden="true"></div>
+    <main class="login-card" role="main">
+      <header class="login-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="44" height="44">
+            <path d="M24 4l17 10v20L24 44 7 34V14z" fill="none" stroke="currentColor" stroke-width="2.5"/>
+            <circle cx="24" cy="24" r="5" fill="currentColor"/>
+            <path d="M24 4v9M24 35v9M7 14l8 5M33 29l8 5M41 14l-8 5M15 29l-8 5" stroke="currentColor" stroke-width="1.5" opacity=".6"/>
+          </svg>
+        </div>
+        <div>
+          <h1>BeeInControl</h1>
+          <p class="tagline">Multi-Tenant OT Fleet &amp; NIS2 Access Control Simulator</p>
+        </div>
+      </header>
+
+      <form id="login-form" class="login-form" autocomplete="on">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" required placeholder="you@company.io" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" name="password" required placeholder="••••••••" autocomplete="current-password" />
+        </label>
+        <p id="login-error" class="form-error hidden" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-block" id="login-submit">Sign in</button>
+      </form>
+
+      <section class="demo-credentials">
+        <div class="demo-head">
+          <h2>Demo operators</h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="seed-refresh" title="Reset demo operator list">↻ refresh</button>
+        </div>
+        <p class="hint">Click a card to sign in instantly. Tenant-scoped roles exercise different RBAC views.</p>
+        <div id="demo-list" class="demo-grid">
+          <p class="muted">Loading demo credentials…</p>
+        </div>
+      </section>
+
+      <footer class="login-foot">
+        <span id="health-pill" class="pill pill-muted">API …</span>
+        <span class="muted">NIS2 Art. 21 · Art. 23 · JIT vendor access · Hash-chained audit</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ======================= APP SHELL ======================= -->
+  <div id="app-view" class="app-view hidden">
+    <div class="scanline" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <button class="btn btn-ghost nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+      <a class="topbar-brand" href="/" data-link>
+        <svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true">
+          <path d="M24 4l17 10v20L24 44 7 34V14z" fill="none" stroke="currentColor" stroke-width="3"/>
+          <circle cx="24" cy="24" r="5" fill="currentColor"/>
+        </svg>
+        <span>BeeInControl</span>
+        <span class="env-chip">SIM</span>
+      </a>
+
+      <div class="topbar-controls">
+        <!-- Tenant switcher -->
+        <label class="switcher" title="Tenant context">
+          <span class="switcher-label">TENANT</span>
+          <select id="tenant-switcher" class="switcher-select"></select>
+        </label>
+        <!-- Role switcher (UI role context; server still enforces union of grants) -->
+        <label class="switcher" title="Role context for permission-aware UI">
+          <span class="switcher-label">ROLE</span>
+          <select id="role-switcher" class="switcher-select"></select>
+        </label>
+        <span id="perm-pill" class="pill pill-perm" title="Effective permission codes in current context">—</span>
+      </div>
+
+      <div class="topbar-user">
+        <span id="user-chip" class="user-chip">
+          <span id="user-avatar" class="avatar">?</span>
+          <span class="user-meta">
+            <strong id="user-name">…</strong>
+            <small id="user-role">…</small>
+          </span>
+        </span>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" title="Sign out">Logout</button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <nav class="sidenav" id="sidenav">
+        <a href="/" data-link data-route="dashboard" class="nav-item"><span class="nav-ico">▦</span> Dashboard</a>
+        <a href="/tenants" data-link data-route="tenants" class="nav-item"><span class="nav-ico">⌂</span> Tenants</a>
+        <a href="/users" data-link data-route="users" class="nav-item"><span class="nav-ico">👤</span> Users &amp; Roles</a>
+        <a href="/assets" data-link data-route="assets" class="nav-item"><span class="nav-ico">⛭</span> OT Fleet</a>
+        <a href="/jit" data-link data-route="jit" class="nav-item"><span class="nav-ico">⏱</span> JIT Access</a>
+        <a href="/incidents" data-link data-route="incidents" class="nav-item"><span class="nav-ico">⚠</span> NIS2 Incidents</a>
+        <a href="/audit" data-link data-route="audit" class="nav-item"><span class="nav-ico">🔗</span> Audit Chain</a>
+        <div class="nav-foot">
+          <div id="chain-badge" class="chain-badge chain-idle" title="Audit chain status (from /audit/verify)">
+            <span class="chain-dot"></span>
+            <span id="chain-badge-text">chain unknown</span>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content" id="app" tabindex="-1">
+        <div class="page-loading"><div class="spinner"></div><p>Loading console…</p></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+  <!-- Simple modal host -->
+  <div id="modal-host" class="modal-host hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-card" id="modal-card"></div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/tenants.js"></script>
+  <script src="/static/js/users.js"></script>
+  <script src="/static/js/assets.js"></script>
+  <script src="/static/js/jit.js"></script>
+  <script src="/static/js/incidents.js"></script>
+  <script src="/static/js/audit.js"></script>
+  <script>
+    // Boot once all page modules registered themselves.
+    document.addEventListener('DOMContentLoaded', function () {
+      window.App.boot();
+    });
+  </script>
+</body>
+</html>
